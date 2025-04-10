@@ -9,6 +9,7 @@ A Python tool to compare and synchronize database schemas between Notion environ
 - Detailed Formula property comparison
 - Selective synchronization after difference confirmation
 - Easy command-line interface
+- Configurable display verbosity with simple/detailed modes
 
 ## Installation
 
@@ -43,6 +44,24 @@ python notion_sync.py --diff-only
 
 ```bash
 python notion_sync.py --sync
+```
+
+### Display Options
+
+By default, the tool shows detailed information about formulas and other property settings. You can control the verbosity with these options:
+
+```bash
+# Simple mode (hides formula expressions and detailed property settings)
+python notion_sync.py --diff-only --simple
+
+# Detailed mode (explicitly show all details - this is the default)
+python notion_sync.py --diff-only --detail
+```
+
+You can combine these display options with any other command:
+
+```bash
+python notion_sync.py --sync --simple
 ```
 
 ## Color Coding
