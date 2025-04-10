@@ -120,7 +120,7 @@ def get_property_details(config):
         return prop_type
 
 # 差分の表示
-def print_schema_diff(diff):
+def print_schema_diff(diff, show_details=True):
     print("\n=== Notion DBスキーマの差分 ===\n")
     
     if not diff["only_in_prod"] and not diff["only_in_test"] and not diff["different_config"]:
@@ -132,9 +132,9 @@ def print_schema_diff(diff):
         print(Fore.RED + "📌 本番環境にのみ存在するプロパティ:" + Style.RESET_ALL)
         for name, config in diff["only_in_prod"].items():
             prop_type = config.get("type", "不明")
-            details = get_property_details(config)
             print(Fore.RED + f"  • {name} (タイプ: {prop_type})" + Style.RESET_ALL)
-            if prop_type == "formula":
+            if show_details and prop_type == "formula":
+                details = get_property_details(config)
                 print(Fore.RED + f"    → {details}" + Style.RESET_ALL)
         print()
     
@@ -143,9 +143,9 @@ def print_schema_diff(diff):
         print(Fore.BLUE + "📌 テスト環境にのみ存在するプロパティ:" + Style.RESET_ALL)
         for name, config in diff["only_in_test"].items():
             prop_type = config.get("type", "不明")
-            details = get_property_details(config)
             print(Fore.BLUE + f"  • {name} (タイプ: {prop_type})" + Style.RESET_ALL)
-            if prop_type == "formula":
+            if show_details and prop_type == "formula":
+                details = get_property_details(config)
                 print(Fore.BLUE + f"    → {details}" + Style.RESET_ALL)
         print()
     
@@ -165,8 +165,8 @@ def print_schema_diff(diff):
             else:
                 print(f"    - タイプ: {prod_type}")
                 
-                # formulaの場合は詳細を表示
-                if prod_type == "formula":
+                # formulaの場合は詳細を表示（オプションに応じて）
+                if show_details and prod_type == "formula":
                     prod_formula = get_formula_details(configs['prod'])
                     test_formula = get_formula_details(configs['test'])
                     
@@ -186,8 +186,8 @@ def print_schema_diff(diff):
                             
                             # 差分を強調表示
                             highlight_formula_diff(prod_expr_formatted, test_expr_formatted)
-                else:
-                    # その他のタイプの場合も主要な差分を表示
+                elif show_details:
+                    # その他のタイプの場合も主要な差分を表示（オプションに応じて）
                     prod_details = get_property_details(configs['prod'])
                     test_details = get_property_details(configs['test'])
                     
@@ -221,12 +221,21 @@ def main():
     parser = argparse.ArgumentParser(description="Notion DBスキーマの差分確認・同期ツール")
     parser.add_argument("--diff-only", action="store_true", help="差分の確認のみを行い、同期処理は実行しない")
     parser.add_argument("--sync", action="store_true", help="スキーマの同期を実行する")
+    parser.add_argument("--simple", action="store_true", help="フォーミュラや設定の詳細を表示しない簡易表示モード")
+    parser.add_argument("--detail", action="store_true", help="フォーミュラや設定の詳細を表示する詳細表示モード（デフォルト）")
     args = parser.parse_args()
     
     # どちらのオプションも指定されていない場合はヘルプを表示
     if not args.diff_only and not args.sync:
         parser.print_help()
         return
+    
+    # 詳細表示フラグの決定（--simpleが指定されている場合はFalse、それ以外はTrue）
+    show_details = not args.simple if args.simple else True
+    
+    # --detailが明示的に指定されている場合は、--simpleよりも優先
+    if args.detail:
+        show_details = True
     
     # 本番環境のデータベース情報を取得
     print("本番環境のデータベース情報を取得中...")
@@ -249,8 +258,14 @@ def main():
     # 差分を検出
     diff = detect_schema_diff(prod_properties, test_properties)
     
-    # 差分を表示
-    print_schema_diff(diff)
+    # 差分を表示（詳細表示オプション付き）
+    print_schema_diff(diff, show_details=show_details)
+    
+    # 表示モードの情報表示
+    if show_details:
+        print(f"{Fore.CYAN}詳細表示モードで表示しています。簡易表示にするには --simple オプションを使用してください。{Style.RESET_ALL}")
+    else:
+        print(f"{Fore.CYAN}簡易表示モードで表示しています。詳細表示にするには --detail オプションを使用してください。{Style.RESET_ALL}")
     
     # 同期オプションが指定されている場合のみ同期処理を実行
     if args.sync and not args.diff_only:
